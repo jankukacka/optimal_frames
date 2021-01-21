@@ -81,11 +81,11 @@ def find_optimal_frames(scans, verbose=True, strict=None, metrics=None, agg=None
 
         n_wavelengths = metadata.get_wavelength_count(filename_msot)
 
+        optimal_positions = optimal_positions[:n_best]
+
         ## Optionally, print results
         if verbose:
             print_results(motion_scores, optimal_positions, filename_msot, strict)
-
-        optimal_positions = optimal_positions[:n_best]
 
         ## Optionally, save gifs
         if output_gifs:
@@ -235,6 +235,7 @@ def print_results(results, peaks, metadata_filename, strict=None):
     if strict:
         ranges = ranges[::n_wavelengths]
 
+    print(metadata_filename)
     print_oa_range = lambda peak,n_wavelengths: f'[{peak//n_wavelengths:>3} ({peak%n_wavelengths:>2}) - {(peak+n_wavelengths-1)//n_wavelengths:>3} ({(peak+n_wavelengths-1)%n_wavelengths:>2})]  '
     if strict:
         print_oa_range = lambda peak,n_wavelengths: f'[{peak:>3} ( 0) - {peak:>3} ({n_wavelengths:>2})]  '
@@ -301,7 +302,6 @@ def save_gif(us, metadata_filename, peaks, output_folder, strict=None):
         if strict:
             us_start = oa_to_us[index*n_wavelengths]
             us_stop = oa_to_us[(index+1)*n_wavelengths-1]
-        print('gif:', us_start, us_stop)
         animation = us[us_start:us_stop+1]
         animation = ((animation - animation.min()) / animation.ptp() * 255).astype(np.uint8)
 
@@ -387,7 +387,7 @@ def process_scan(ultrasound, metadata_filename, strict=None,
     results = aggregate_scores(rank_scores, ranges, agg, min_len)
 
     ## Find peaks
-    peaks = scipy.signal.find_peaks(-results, distance=len(results)//distance)[0]
+    peaks = scipy.signal.find_peaks(-results, distance=max(1,len(results)//distance))[0]
     sorted_peaks = peaks[np.argsort(results[peaks])]
 
     return sorted_peaks, results
