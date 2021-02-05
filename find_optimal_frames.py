@@ -11,9 +11,9 @@ import argparse
 import numpy as np
 import scipy.signal
 import matplotlib.pyplot as plt
-import metadata
-import motion_metrics
-import ultrasound_utils
+from . import metadata
+from . import motion_metrics
+from . import ultrasound_utils
 from pathlib import Path
 
 
