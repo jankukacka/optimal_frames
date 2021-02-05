@@ -37,18 +37,24 @@ parser.add_argument('--metrics', type=str, help='List of metrics to use.', nargs
 
 def find_optimal_frames(scans, verbose=True, strict=None, metrics=None, agg=None,
                         distance=None, min_len=None, n_best=5, output_txt=False,
-                        output_gifs=False, output_plot=False):
+                        output_gifs=False, output_plot=False, output_folder=None):
     '''
     This function takes a list of scans to process and for each of them finds
     an optimal position(s) based on motion in the ultrasound sequences.
 
     # Arguments:
-        - scans: list of scans to process. A scan is represented by a path to
-            the folder where it resides, which is expected to contain an .msot
-            and an .us file. Alternatively, a list of tuples can be passed, where
-            first tuple element is a path to the .msot file and the second is
-            a path to the .us file corresponding to one scan.
+    - `scans`: list of scans to process. A scan is represented by a path to
+        the folder where it resides, which is expected to contain an .msot
+        and an .us file. Alternatively, a list of tuples can be passed, where
+        first tuple element is a path to the .msot file and the second is
+        a path to the .us file corresponding to one scan.
+    - `output_folder`: (optional) Path to folder where to save the generated
+        results. Defaults to a folder "motion_analysis_{name of the scan}" in
+        the scan directory
 
+    # Returns
+    - `results`: dictionary with pairs scan: sorted list of optimal positions
+        as zero-based OA pulse indices.
     '''
     results = {}
     for scan in scans:
