@@ -64,17 +64,23 @@ def find_optimal_frames(scans, verbose=True, strict=None, metrics=None, agg=None
             scan = Path(scan)
             filename_msot = scan / [file for file in files if file.lower().endswith('.msot')][0]
             filename_us = scan / [file for file in files if file.lower().endswith('.us')][0]
-            output_folder = scan / ('motion_analysis_' + filename_us.stem)
+            if output_folder is None:
+                output_folder_ = scan / ('motion_analysis_' + filename_us.stem)
+            else:
+                output_folder_ = output_folder
         except IndexError:
             ## Looks like files were not found
             raise('In folder ' + str(scan) + '.msot and .us file could not be found.')
         except TypeError:
             ## Looks like scan is a tuple
             filename_msot, filename_us = scan
-            output_folder = Path(filename_msot).parent / ('motion_analysis_' + Path(filename_msot).stem)
+            if output_folder is None:
+                output_folder_ = Path(filename_msot).parent / ('motion_analysis_' + Path(filename_msot).stem)
+            else:
+                output_folder_ = output_folder
 
         if output_gifs or output_txt or output_plot:
-            ensure_folder(output_folder)
+            ensure_folder(output_folder_)
 
         ## Load ultrasound once - multiple functions use it
         us = ultrasound_utils.load_acuity_ultrasound(filename_us,
@@ -95,17 +101,17 @@ def find_optimal_frames(scans, verbose=True, strict=None, metrics=None, agg=None
 
         ## Optionally, save gifs
         if output_gifs:
-            save_gif(us, filename_msot, optimal_positions, output_folder, strict)
+            save_gif(us, filename_msot, optimal_positions, output_folder_, strict)
 
         ## Optionally, save results to text file
         if output_txt:
             kwargs = {'strict': strict, 'metrics': metrics, 'agg': agg,
                       'distance': distance, 'min_len': min_len, 'n_best': n_best}
-            save_txt(motion_scores, optimal_positions, output_folder, kwargs)
+            save_txt(motion_scores, optimal_positions, output_folder_, kwargs)
 
         ## Optionally, save motion plots
         if output_plot:
-            save_plot(motion_scores, optimal_positions, output_folder)
+            save_plot(motion_scores, optimal_positions, output_folder_)
 
         results[scan] = optimal_positions
     return results
