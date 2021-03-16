@@ -27,6 +27,7 @@ parser.add_argument('-v', '--verbose', help='Print results to the output', actio
 parser.add_argument('-g', '--output_gifs', help='Save animation of results as gif', action='store_true', default=argparse.SUPPRESS)
 parser.add_argument('-t', '--output_txt', help='Save results as text file', action='store_true', default=argparse.SUPPRESS)
 parser.add_argument('-p', '--output_plot', help='Save motion plot as image', action='store_true', default=argparse.SUPPRESS)
+parser.add_argument('-c', '--output_csv', help='Save results as csv suitable for reconstruction code.', action='store_true', default=argparse.SUPPRESS)
 parser.add_argument('--strict', help='Strict mode - only consider whole frames', action='store_true', default=argparse.SUPPRESS)
 parser.add_argument('--agg', type=str, help='Type of aggregation of scores. "mean", "max", or "75percentile". Default is "mean".', default=argparse.SUPPRESS)
 parser.add_argument('--n_best', type=int, help='Maximal number of positions to consider. Default = 5', default=argparse.SUPPRESS)
@@ -37,7 +38,8 @@ parser.add_argument('--metrics', type=str, help='List of metrics to use.', nargs
 
 def find_optimal_frames(scans, verbose=True, strict=None, metrics=None, agg=None,
                         distance=None, min_len=None, n_best=5, output_txt=False,
-                        output_gifs=False, output_plot=False, output_folder=None):
+                        output_gifs=False, output_plot=False, output_folder=None,
+                        output_csv=False):
     '''
     This function takes a list of scans to process and for each of them finds
     an optimal position(s) based on motion in the ultrasound sequences.
@@ -57,6 +59,7 @@ def find_optimal_frames(scans, verbose=True, strict=None, metrics=None, agg=None
         as zero-based OA pulse indices.
     '''
     results = {}
+    csv = {'study':[], 'scan':[], 'pulses':[]}
     for scan in scans:
         ## Decide if scan is a directory path or tuple of two filenames
         try:
@@ -107,7 +110,16 @@ def find_optimal_frames(scans, verbose=True, strict=None, metrics=None, agg=None
         if output_plot:
             save_plot(motion_scores, optimal_positions, output_folder)
 
+        ## Optionally, add rows to csv dictionary
+        if output_csv:
+            append_csv(csv, filename_msot, optimal_positions, strict)
+
         results[scan] = optimal_positions
+
+    ## Optionally, save csv
+    if output_csv:
+        save_csv(csv)
+
     return results
 
 
@@ -315,6 +327,62 @@ def save_gif(us, metadata_filename, peaks, output_folder, strict=None):
                    animation, parents=True, overwrite=True)
 
 
+def append_csv(csv, metadata_filename, peaks, strict=None):
+    '''
+    Appends new rows to csv dictionary
+
+    # Arguments
+    - `csv`: dictionary with keys `study`, `scan`, `pulses`, each containing a list.
+    - `metadata_filename`: Filename with path to the .msot file corresponding
+        to the analyzed scan
+    - `peaks`: list of best position indices sorted by motion score
+    - `strict`:
+    '''
+    if strict is None:
+        strict = False
+
+    study, scan = None, None
+    try:
+        path_parts = Path(metadata_filename).parts
+        for part in path_parts:
+            if part.lower().startswith('study_'):
+                study = int(part.split('_')[1])
+            if part.lower().startswith('scan_'):
+                scan = int(part.split('_')[1])
+    except Exception as e:
+        print('WARNING: Error parsing study and scan numbers')
+        print(e)
+
+    if study is None or scan is None:
+        print('WARNING: Could not find study and scan to add to CSV output.')
+        print('         MSOT file:', metadata_filename)
+        return
+
+    n_wavelengths = metadata.get_wavelength_count(metadata_filename)
+
+    for peak in peaks:
+        if strict:
+            pulses = np.arange(peak * n_wavelengths, (peak+1)*n_wavelengths)
+        elif peak//n_wavelengths == (peak+n_wavelengths-1)//n_wavelengths:
+            ## All wavelenghts in a single frame
+            pulses = np.arange(peak, peak+n_wavelengths)
+        else:
+            pulses1 = np.arange(peak, ((peak//n_wavelengths)+1)*n_wavelengths)
+            pulses2 = np.arange(((peak//n_wavelengths)+1)*n_wavelengths, peak+n_wavelengths)
+            pulses = np.concatenate([pulses2, pulses1], axis=0)
+
+        pulses_string = '[' + ';'.join(pulses.astype(int)) + ']'
+        csv['study'].append(study)
+        csv['scan'].append(scan)
+        csv['pulses'].append(pulses_string)
+
+
+def save_csv(csv):
+    import pandas as pd
+    df = pd.DataFrame(csv)
+    df.to_csv('motion_analysis.csv')
+
+
 def save_txt(results, peaks, output_folder, kwargs):
     '''
     Function to save the results to a text file.
@@ -463,10 +531,10 @@ def print_intro(kwargs):
 
 
     ## Reporting options
-    args = ['n_best', 'verbose', 'output_txt', 'output_plot', 'output_gifs']
+    args = ['n_best', 'verbose', 'output_txt', 'output_plot', 'output_gifs', 'output_csv']
     titles = ['Maximal number of peaks to report: ', '(-v) Print output to console',
               '(-t) Save results to text file', '(-p) Save motion analysis plot',
-              '(-g) Save gif with optimal position']
+              '(-g) Save gif with optimal position', '(-c) Output csv for recon code']
 
     args_titles = [(x,y) for x,y in zip(args, titles) if x in kwargs]
     n_items = len(args_titles)
@@ -489,9 +557,10 @@ if __name__ == '__main__':
     print_intro(kwargs)
 
     if ('output_txt' not in kwargs and 'verbose' not in kwargs and
-        'output_gifs' not in kwargs and 'output_plot' not in kwargs):
+        'output_gifs' not in kwargs and 'output_plot' not in kwargs and
+        'output_csv' not in kwargs):
         print('WARNING: No option for reporting results was specified.')
-        print('Run again with some of the flags: -v -t -g -p')
+        print('Run again with some of the flags: -v -t -g -p -c')
         print('Run with -h to see help.')
         exit()
     with open(kwargs['input_filename'], 'r') as input_file:
