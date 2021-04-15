@@ -348,20 +348,25 @@ def append_csv(csv, metadata_filename, peaks, strict=None):
         strict = False
 
     study, scan = None, None
-    try:
-        path_parts = Path(metadata_filename).parts
-        for part in path_parts:
+    exceptions = []
+    path_parts = Path(metadata_filename).parts
+    for part in path_parts:
+        try:
             if part.lower().startswith('study_'):
                 study = int(part.split('_')[1])
             if part.lower().startswith('scan_'):
                 scan = int(part.split('_')[1])
-    except Exception as e:
-        print('WARNING: Error parsing study and scan numbers')
-        print(e)
+        except Exception as e:
+            exceptions.append(e)
 
     if study is None or scan is None:
         print('WARNING: Could not find study and scan to add to CSV output.')
         print('         MSOT file:', metadata_filename)
+        if len(exceptions) > 0:
+            print('Following exceptions occured:')
+            for e in exceptions:
+                print(e)
+            print('')
         return
 
     n_wavelengths = metadata.get_wavelength_count(metadata_filename)
@@ -376,8 +381,10 @@ def append_csv(csv, metadata_filename, peaks, strict=None):
             pulses1 = np.arange(peak, ((peak//n_wavelengths)+1)*n_wavelengths)
             pulses2 = np.arange(((peak//n_wavelengths)+1)*n_wavelengths, peak+n_wavelengths)
             pulses = np.concatenate([pulses2, pulses1], axis=0)
-
-        pulses_string = '[' + ';'.join(pulses.astype(int)) + ']'
+        ## Convert to 1-based indexing
+        pulses = 1 + pulses
+        ## Recon code expects format [int;int;int]
+        pulses_string = '[' + ';'.join([str(int(x)) for x in pulses]) + ']'
         csv['study'].append(study)
         csv['scan'].append(scan)
         csv['pulses'].append(pulses_string)
@@ -386,7 +393,7 @@ def append_csv(csv, metadata_filename, peaks, strict=None):
 def save_csv(csv):
     import pandas as pd
     df = pd.DataFrame(csv)
-    df.to_csv('motion_analysis.csv')
+    df.to_csv('motion_analysis.csv', index=False)
 
 
 def save_txt(results, peaks, output_folder, kwargs):
