@@ -5,6 +5,10 @@ Library / tool for motion analysis in MS-OPUS scans
 
 ```
 python find_optimal_frames.py input_file [-v -g -t -p -c] [--strict] [--agg {mean|max|75percentile}] [--n_best N] [--min_len N] [--distance N] [--metrics [metric, ...]]
+
+or 
+
+python -m optimal_frames.find_optimal_frames [rest as above]
 ```
 
 `input_file` contains paths to scans that should be processed. Two formats are possible and can be mixed:
