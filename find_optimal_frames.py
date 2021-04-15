@@ -71,9 +71,15 @@ def find_optimal_frames(scans, verbose=True, strict=None, metrics=None, agg=None
                 output_folder_ = scan / ('motion_analysis_' + filename_us.stem)
             else:
                 output_folder_ = output_folder
+        except FileNotFoundError as exception:
+            ## Looks like files were not found
+            print('WARNING: Folder ' + str(scan) + ' could not be found:')
+            print(exception)
+            continue
         except IndexError:
             ## Looks like files were not found
-            raise('In folder ' + str(scan) + '.msot and .us file could not be found.')
+            print('WARNING: In folder ' + str(scan) + '.msot and .us file could not be found.')
+            continue
         except TypeError:
             ## Looks like scan is a tuple
             filename_msot, filename_us = scan
@@ -383,6 +389,8 @@ def append_csv(csv, metadata_filename, peaks, strict=None):
             pulses = np.concatenate([pulses2, pulses1], axis=0)
         ## Convert to 1-based indexing
         pulses = 1 + pulses
+        # ## Hack for now:
+        # pulses = pulses[:48]
         ## Recon code expects format [int;int;int]
         pulses_string = '[' + ';'.join([str(int(x)) for x in pulses]) + ']'
         csv['study'].append(study)
