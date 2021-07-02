@@ -49,4 +49,4 @@ Output of flags `g`, `t`, and `p` is saved at the data location in a new folder 
     
 # Dependencies
 
-The program requires `numpy`, `scipy`, and `scikit-image`.
+The program requires `numpy`, `scipy`, `scikit-image`, `matplotlib`, and `pandas`.
