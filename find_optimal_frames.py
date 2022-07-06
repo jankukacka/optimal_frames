@@ -484,6 +484,8 @@ def process_scan(ultrasound, metadata_filename, strict=None,
     ## Find peaks
     peaks = scipy.signal.find_peaks(-results, distance=max(1,len(results)//distance))[0]
     sorted_peaks = peaks[np.argsort(results[peaks])]
+    if len(sorted_peaks) == 0:
+        sorted_peaks = np.argsort(results)[0:len(results)//distance:]
 
     return sorted_peaks, results
 
